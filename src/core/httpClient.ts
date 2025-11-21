@@ -12,6 +12,7 @@ export class HttpClient {
   private readonly onResponse?: PlacetoPayConfig["onResponse"];
   private readonly debugAuth?: boolean;
   private readonly extraHeaders?: Record<string, string>;
+  private readonly idempotencyHeader?: string;
   private retryPolicy = defaultRetryPolicy;
 
   constructor(config: PlacetoPayConfig) {
@@ -30,6 +31,7 @@ export class HttpClient {
     this.onResponse = config.onResponse;
     this.debugAuth = config.debugAuth;
     this.extraHeaders = config.extraHeaders;
+    this.idempotencyHeader = config.idempotencyHeader;
 
     if (config.retryPolicy) this.retryPolicy = config.retryPolicy;
   }
@@ -37,13 +39,15 @@ export class HttpClient {
   private async postOnce<T>(
     path: string,
     body: unknown,
-    attempt: number
+    attempt: number,
+    options?: { headers?: Record<string, string> }
   ): Promise<T> {
     const url = `${this.baseUrl}${path}`;
     const headers = {
       "Content-Type": "application/json",
       Accept: "application/json",
-      ...(this.extraHeaders ?? {})
+      ...(this.extraHeaders ?? {}),
+      ...(options?.headers ?? {})
     };
 
     this.onRequest && (await this.onRequest({ url, body, headers, attempt }));
@@ -122,9 +126,19 @@ export class HttpClient {
     });
   }
 
-  async post<T>(path: string, body: unknown): Promise<T> {
+  async post<T>(
+    path: string,
+    body: unknown,
+    options?: { headers?: Record<string, string>; idempotencyKey?: string }
+  ): Promise<T> {
+    const headers = {
+      ...(options?.headers ?? {}),
+      ...(options?.idempotencyKey
+        ? { [this.idempotencyHeader ?? "Idempotency-Key"]: options.idempotencyKey }
+        : {})
+    };
     return withRetry(
-      (attempt) => this.postOnce<T>(path, body, attempt),
+      (attempt) => this.postOnce<T>(path, body, attempt, { headers }),
       this.retryPolicy,
       this.logger
     );

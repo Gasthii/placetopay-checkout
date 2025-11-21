@@ -20,6 +20,12 @@ export class TransactionService {
     return buildAuth(this.login, this.secretKey, this.timeProvider);
   }
 
+  /**
+   * Ejecuta acciones de preautorización (checkout/reauthorization/reverse) sobre un internalReference.
+   *
+   * @param {TransactionActionRequest} req Debe incluir action y internalReference; amount para checkout/reauthorization.
+   * @returns {Promise<RedirectInformation>} Respuesta de checkout API con status/payment tipado.
+   */
   async action(req: TransactionActionRequest): Promise<RedirectInformation> {
     if (!req.action) throw new PlacetoPayValidationError("action is required");
     if (!req.internalReference && req.internalReference !== 0) {
@@ -47,6 +53,9 @@ export class TransactionService {
     return this.action({ action: "checkout", internalReference, amount });
   }
 
+  /**
+   * Alias para reauthorization.
+   */
   reauthorize(internalReference: number, amount: Amount) {
     return this.action({ action: "reauthorization", internalReference, amount });
   }

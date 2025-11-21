@@ -30,6 +30,10 @@ export interface PlacetoPayConfig {
    * Headers extra que se envian en cada request HTTP.
    */
   extraHeaders?: Record<string, string>;
+  /**
+   * Nombre del header de idempotencia (default: Idempotency-Key).
+   */
+  idempotencyHeader?: string;
 
   onRequest?(ctx: {
     url: string;

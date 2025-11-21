@@ -6,6 +6,10 @@ import SessionService from "./services/sessionService";
 import TransactionService from "./services/transactionService";
 import RefundService from "./services/refundService";
 import WebhookVerifier from "./services/webhookVerifier";
+import GatewayService from "./services/gatewayService";
+import ReportService from "./services/reportService";
+import PaymentLinkService from "./services/paymentLinkService";
+import AutopayService from "./services/autopayService";
 import { PlacetoPayValidationError } from "./errors/errors";
 
 /**
@@ -16,6 +20,10 @@ export class PlacetoPayClient {
   public readonly transactions: TransactionService;
   public readonly refunds: RefundService;
   public readonly webhooks: WebhookVerifier;
+  public readonly gateway: GatewayService;
+  public readonly paymentLinks: PaymentLinkService;
+  public readonly autopay: AutopayService;
+  public readonly reports: ReportService;
 
   /**
    * Crea un cliente a partir de la configuracion tipada.
@@ -57,6 +65,33 @@ export class PlacetoPayClient {
     );
 
     this.webhooks = new WebhookVerifier(config.secretKey);
+
+    this.gateway = new GatewayService(
+      carrier,
+      config.login,
+      config.secretKey,
+      timeProvider,
+      config.logger,
+      {
+        defaultLocale: config.defaultLocale
+      }
+    );
+
+    this.paymentLinks = new PaymentLinkService(
+      carrier,
+      config.login,
+      config.secretKey,
+      timeProvider
+    );
+
+    this.autopay = new AutopayService(
+      carrier,
+      config.login,
+      config.secretKey,
+      timeProvider
+    );
+
+    this.reports = new ReportService(carrier, config.login, config.secretKey, timeProvider);
   }
 
   /**

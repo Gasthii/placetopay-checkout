@@ -3,13 +3,34 @@ export interface Amount {
   total: number;
 
   taxes?: Array<{
-    kind?: string;
+    kind?:
+      | "valueAddedTax"
+      | "exciseDuty"
+      | "ice"
+      | "airportTax"
+      | "stateTax"
+      | "reducedStateTax"
+      | "municipalTax"
+      | string;
     amount?: number;
     base?: number;
   }>;
 
   details?: Array<{
-    kind?: string;
+    kind?:
+      | "discount"
+      | "additional"
+      | "vatDevolutionBase"
+      | "shipping"
+      | "handlingFee"
+      | "insurance"
+      | "giftWrap"
+      | "subtotal"
+      | "fee"
+      | "tip"
+      | "airline"
+      | "interests"
+      | string;
     amount?: number;
   }>;
 

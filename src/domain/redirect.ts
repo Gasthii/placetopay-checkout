@@ -9,6 +9,35 @@ export interface SubscriptionRequest {
   reference: string;
   description?: string;
   amount?: Amount;
+  fields?: NameValuePair[];
+  [key: string]: unknown;
+}
+
+export interface SessionMetadata {
+  returnPath?: string;
+  returnParams?: Record<string, unknown>;
+  cancelPath?: string;
+  cancelParams?: Record<string, unknown>;
+  initiatorIndicator?:
+    | "AGENT"
+    | "CARDHOLDER_COF"
+    | "CARDHOLDER_RECURRING_VARIABLE_AMOUNT"
+    | "CARDHOLDER_RECURRING_FIXED_AMOUNT"
+    | "CARDHOLDER_WITH_INSTALLMENTS"
+    | "MERCHANT_COF"
+    | "MERCHANT_RECURRING_VARIABLE_AMOUNT"
+    | "MERCHANT_RECURRING_FIXED_AMOUNT"
+    | "MERCHANT_WITH_INSTALLMENTS"
+    | string;
+  EBTDeliveryIndicator?:
+    | "DIRECT_DELIVERY"
+    | "CUSTOMER_PICKUP"
+    | "COMMERCIAL_SHIPPING"
+    | "OTHER"
+    | "NOT_AVAILABLE"
+    | string;
+  openingDate?: string;
+  beneficiaryId?: string;
   [key: string]: unknown;
 }
 
@@ -23,6 +52,8 @@ export interface RedirectRequest {
   buyer?: Person;
   payer?: Person;
 
+  attemptsLimit?: number;
+
   ipAddress: string;
   userAgent: string;
 
@@ -31,6 +62,7 @@ export interface RedirectRequest {
 
   expiration?: string;
   paymentMethod?: string;
+  paymentMethods?: string[];
 
   fields?: NameValuePair[];
   skipResult?: boolean;
@@ -38,7 +70,7 @@ export interface RedirectRequest {
 
   type?: "checkin" | string;
 
-  metadata?: Record<string, unknown>;
+  metadata?: SessionMetadata;
 }
 
 export interface RedirectResponse {

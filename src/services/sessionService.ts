@@ -2,6 +2,14 @@ import type { Carrier } from "../contracts/carrier";
 import type { Logger } from "../core/logger";
 import { buildAuth, type Auth, type TimeProvider } from "../core/auth";
 import { buildReturnUrl, assertValidUrl } from "../core/url";
+import {
+  assertAttemptsLimit,
+  assertFieldsLimits,
+  assertFutureExpiration,
+  assertLocalePattern
+} from "../core/validation";
+import { assertMetadataFormat } from "../core/metadata";
+import { normalizeCountry, validateDocument } from "../core/documents";
 import type {
   RedirectRequest,
   RedirectResponse,
@@ -55,6 +63,13 @@ export class SessionService {
     return buildAuth(this.login, this.secretKey, this.timeProvider);
   }
 
+  /**
+   * Crea una sesión de Checkout (/api/session) con validaciones de expiración, locale, fields y documentos.
+   *
+   * @param {RedirectRequest} request Debe incluir ipAddress, userAgent y al menos payment|payments|subscription.
+   * @param {SessionCreateOptions} [options] locale personalizado o authOverride.
+   * @returns {Promise<RedirectResponse>} Respuesta tipada con status OK, requestId y processUrl.
+   */
   async create(
     request: RedirectRequest,
     options: SessionCreateOptions = {}
@@ -66,8 +81,11 @@ export class SessionService {
         "You must provide payment, payments or subscription"
       );
     }
+    assertAttemptsLimit(request.attemptsLimit);
 
-    // Si el usuario mandó returnUrl directo, se valida.
+    assertFutureExpiration(request.expiration, this.timeProvider);
+
+    // Si el usuario mando returnUrl directo, se valida.
     // Si no manda, intentamos construirla desde returnUrlBase + metadata.path (pattern pro).
     let returnUrl = request.returnUrl;
     if (!returnUrl && this.returnUrlBase && request.metadata?.returnPath) {
@@ -93,9 +111,56 @@ export class SessionService {
     }
 
     const auth = options.authOverride ?? this.auth();
+    const locale = options.locale ?? request.locale ?? this.defaultLocale ?? "es_UY";
+    assertLocalePattern(locale);
+    assertFieldsLimits(request.fields, "redirectRequest");
+    if (request.payment?.fields) {
+      assertFieldsLimits(request.payment.fields, "payment");
+    }
+    if (Array.isArray(request.payments)) {
+      request.payments.forEach((p, idx) => assertFieldsLimits(p?.fields, `payments[${idx}]`));
+    }
+    if (request.subscription?.fields) {
+      assertFieldsLimits(request.subscription.fields, "subscription");
+    }
+    assertMetadataFormat(request.metadata);
+
+    const buyer = request.buyer
+      ? {
+          ...request.buyer,
+          address: request.buyer.address
+            ? {
+                ...request.buyer.address,
+                country: normalizeCountry(request.buyer.address.country)
+              }
+            : request.buyer.address
+        }
+      : undefined;
+    const payer = request.payer
+      ? {
+          ...request.payer,
+          address: request.payer.address
+            ? {
+                ...request.payer.address,
+                country: normalizeCountry(request.payer.address.country)
+              }
+            : request.payer.address
+        }
+      : undefined;
+
+    validateDocument({
+      country: buyer?.address?.country as any,
+      documentType: buyer?.documentType,
+      document: buyer?.document
+    });
+    validateDocument({
+      country: payer?.address?.country as any,
+      documentType: payer?.documentType,
+      document: payer?.document
+    });
 
     const body = {
-      locale: options.locale ?? request.locale ?? this.defaultLocale ?? "es_UY",
+      locale,
       auth,
       payment: request.payment ?? null,
       payments: request.payments,
@@ -106,13 +171,15 @@ export class SessionService {
       ipAddress: request.ipAddress,
       userAgent: request.userAgent,
       paymentMethod: request.paymentMethod,
+      paymentMethods: request.paymentMethods,
       fields: request.fields,
-      buyer: request.buyer,
-      payer: request.payer,
+      buyer,
+      payer,
       skipResult: request.skipResult,
       noBuyerFill: request.noBuyerFill,
       type: request.type,
-      metadata: request.metadata
+      metadata: request.metadata,
+      attemptsLimit: request.attemptsLimit
     };
 
     const response = await this.carrier.post<RedirectResponse>("/api/session", body);
@@ -129,7 +196,7 @@ export class SessionService {
       throw new PlacetoPayError("Missing requestId or processUrl");
     }
 
-    this.logger?.info?.("[PlacetoPay] Sesión creada", {
+    this.logger?.info?.("[PlacetoPay] Sesion creada", {
       requestId: response.requestId,
       processUrl: response.processUrl
     });
@@ -137,6 +204,12 @@ export class SessionService {
     return response;
   }
 
+  /**
+   * Consulta una sesión por requestId (/api/session/:requestId).
+   *
+   * @param {number|string} requestId Identificador de sesión.
+   * @returns {Promise<RedirectInformation>} Incluye status, request, payment, subscription según docs.
+   */
   async get(requestId: number | string): Promise<RedirectInformation> {
     if (requestId === undefined || requestId === null || requestId === "") {
       throw new PlacetoPayValidationError("requestId is required");
@@ -153,6 +226,12 @@ export class SessionService {
     return response;
   }
 
+  /**
+   * Cancela una sesión si no tiene pagos aprobados (/api/session/:requestId/cancel).
+   *
+   * @param {number|string} requestId Identificador de sesión.
+   * @returns {Promise<RedirectInformation>} Status de cancelación REJECTED/MC según doc.
+   */
   async cancel(requestId: number | string): Promise<RedirectInformation> {
     const response = await this.carrier.post<RedirectInformation>(
       `/api/session/${requestId}/cancel`,
@@ -163,6 +242,13 @@ export class SessionService {
     return response;
   }
 
+  /**
+   * Sondea hasta alcanzar un estado final (APPROVED, REJECTED, APPROVED_PARTIAL, PARTIAL_EXPIRED).
+   *
+   * @param {number|string} requestId Sesión a consultar.
+   * @param {WaitForFinalStatusOptions} [options] pollIntervalMs, maxAttempts y lista de estados finales.
+   * @returns {Promise<RedirectInformation>} Estado final alcanzado o lanza error de timeout.
+   */
   async waitForFinalStatus(
     requestId: number | string,
     options: WaitForFinalStatusOptions = {}
@@ -179,7 +265,7 @@ export class SessionService {
 
       if (finals.includes(s)) return info;
 
-      this.logger?.debug?.("[PlacetoPay] Sesión en proceso", {
+      this.logger?.debug?.("[PlacetoPay] Sesion en proceso", {
         requestId,
         status: s,
         attempt

@@ -18,6 +18,12 @@ export class RefundService {
     return buildAuth(this.login, this.secretKey, this.timeProvider);
   }
 
+  /**
+   * Ejecuta un reembolso (reverse) conforme a placetopay-docs.
+   *
+   * @param {RefundRequest} req Debe incluir internalReference y opcional amount parcial.
+   * @returns {Promise<RedirectInformation>} Status con estructura de redirect/payment documentada.
+   */
   async refund(req: RefundRequest): Promise<RedirectInformation> {
     if (!req.internalReference && req.internalReference !== 0) {
       throw new PlacetoPayValidationError("internalReference is required");
