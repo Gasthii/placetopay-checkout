@@ -1,0 +1,64 @@
+{
+  "name": "@gastondev/placetopay-checkout",
+  "version": "0.3.0",
+  "description": "SDK no oficial, robusto y tipado para integrar PlacetoPay Checkout (WebCheckout/Redirection) en Node.js/Next.js server-side.",
+  "author": "Gastón Dev (https://gastondev.xyz)",
+  "license": "MIT",
+  "homepage": "https://gastondev.xyz",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gastondev/placetopay-checkout.git"
+  },
+  "bugs": {
+    "url": "https://github.com/gastondev/placetopay-checkout/issues"
+  },
+  "keywords": [
+    "placetopay",
+    "checkout",
+    "webcheckout",
+    "payments",
+    "sdk",
+    "node",
+    "nextjs",
+    "typescript"
+  ],
+  "sideEffects": false,
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "docs": "typedoc",
+    "lint": "echo \"add eslint if you want\""
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "tsup": "^8.3.5",
+    "tsx": "^4.20.6",
+    "typedoc": "^0.26.11",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3"
+  }
+}

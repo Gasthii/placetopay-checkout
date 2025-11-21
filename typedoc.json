@@ -1,0 +1,11 @@
+{
+  "entryPoints": ["src/index.ts"],
+  "out": "docs",
+  "name": "@gastondev/placetopay-checkout",
+  "includeVersion": true,
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "readme": "README.md",
+  "plugin": [],
+  "tsconfig": "tsconfig.json"
+}
