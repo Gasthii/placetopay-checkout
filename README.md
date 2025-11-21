@@ -1,4 +1,4 @@
-# @gastondev/placetopay-checkout
+# @gasthii/placetopay-checkout
 
 SDK **no oficial** y completamente tipado para integrar **PlacetoPay Checkout (WebCheckout / Redirection)** en proyectos **Node.js y Next.js (server-side)**.
 
@@ -43,9 +43,9 @@ El objetivo es proveer una base sólida, extensible y lista para producción.
 ## Instalación
 
 ```bash
-npm install @gastondev/placetopay-checkout
+npm install @gasthii/placetopay-checkout
 # o
-yarn add @gastondev/placetopay-checkout
+yarn add @gasthii/placetopay-checkout
 
 ## Diagnostico rapido de autenticacion (401)
 - 100: falta UsernameToken (login/nonce/seed/tranKey).

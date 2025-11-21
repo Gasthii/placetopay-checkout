@@ -1,5 +1,5 @@
 {
-  "name": "@gastondev/placetopay-checkout",
+  "name": "@gasthii/placetopay-checkout",
   "version": "0.3.0",
   "description": "SDK no oficial, robusto y tipado para integrar PlacetoPay Checkout (WebCheckout/Redirection) en Node.js/Next.js server-side.",
   "author": "Gastón Dev (https://gastondev.xyz)",
@@ -7,10 +7,10 @@
   "homepage": "https://gastondev.xyz",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/gastondev/placetopay-checkout.git"
+    "url": "git+https://github.com/gasthii/placetopay-checkout.git"
   },
   "bugs": {
-    "url": "https://github.com/gastondev/placetopay-checkout/issues"
+    "url": "https://github.com/gasthii/placetopay-checkout/issues"
   },
   "keywords": [
     "placetopay",
