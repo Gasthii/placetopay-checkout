@@ -33,4 +33,30 @@ describe("HttpClient", () => {
       httpStatus: 500
     });
   });
+
+  it("mapea 401 auth 101 a mensaje claro", async () => {
+    const fetchImpl = async () =>
+      new Response(
+        JSON.stringify({
+          status: {
+            status: "FAILED",
+            reason: 101,
+            message: "Autenticación fallida 101",
+            date: "2025-01-01T00:00:00-05:00"
+          }
+        }),
+        { status: 401 }
+      );
+
+    const http = new HttpClient({
+      login: "x",
+      secretKey: "y",
+      baseUrl: "https://checkout-test.placetopay.com",
+      fetchImpl: fetchImpl as any
+    });
+
+    await expect(http.post("/api/test", {})).rejects.toMatchObject({
+      message: expect.stringContaining("codigo auth 101")
+    });
+  });
 });

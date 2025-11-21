@@ -8,12 +8,18 @@ import RefundService from "./services/refundService";
 import WebhookVerifier from "./services/webhookVerifier";
 import { PlacetoPayValidationError } from "./errors/errors";
 
+/**
+ * Cliente principal para acceder a los servicios de PlacetoPay (sessions, transactions, refunds, webhooks).
+ */
 export class PlacetoPayClient {
   public readonly sessions: SessionService;
   public readonly transactions: TransactionService;
   public readonly refunds: RefundService;
   public readonly webhooks: WebhookVerifier;
 
+  /**
+   * Crea un cliente a partir de la configuracion tipada.
+   */
   constructor(config: PlacetoPayConfig) {
     if (!config.login) throw new PlacetoPayValidationError("login is required");
     if (!config.secretKey) throw new PlacetoPayValidationError("secretKey is required");
@@ -53,6 +59,10 @@ export class PlacetoPayClient {
     this.webhooks = new WebhookVerifier(config.secretKey);
   }
 
+  /**
+   * Construye el cliente leyendo variables de entorno con prefijo (por defecto PLACETOPAY_).
+   * Requiere LOGIN, SECRET_KEY, BASE_URL; opcional TIME_OFFSET_MS/MINUTES, DEFAULT_LOCALE, DEBUG_AUTH.
+   */
   static fromEnv(prefix = "PLACETOPAY_"): PlacetoPayClient {
     const login = process.env[`${prefix}LOGIN`];
     const secretKey = process.env[`${prefix}SECRET_KEY`];
@@ -72,23 +82,52 @@ export class PlacetoPayClient {
       defaultLocale: process.env[`${prefix}DEFAULT_LOCALE`],
       returnUrlBase: process.env.PUBLIC_BASE_URL,
       cancelUrlBase: process.env.PUBLIC_BASE_URL,
-      timeProvider
+      timeProvider,
+      debugAuth: isTruthy(process.env[`${prefix}DEBUG_AUTH`])
     });
   }
 }
 
 export default PlacetoPayClient;
 
+/**
+  * Resuelve TimeProvider leyendo offsets desde env y valida rangos seguros.
+  */
 function resolveTimeProviderFromEnv(prefix: string) {
   const offsetMsRaw = process.env[`${prefix}TIME_OFFSET_MS`];
-  if (offsetMsRaw && !Number.isNaN(Number(offsetMsRaw))) {
-    return new OffsetTimeProvider(Number(offsetMsRaw));
-  }
-
   const offsetMinutesRaw = process.env[`${prefix}TIME_OFFSET_MINUTES`];
-  if (offsetMinutesRaw && !Number.isNaN(Number(offsetMinutesRaw))) {
-    return new OffsetTimeProvider(Number(offsetMinutesRaw) * 60_000);
+
+  const offsetMs =
+    parseOffset(offsetMsRaw) ??
+    (parseOffset(offsetMinutesRaw) != null
+      ? Number(offsetMinutesRaw) * 60_000
+      : undefined);
+
+  if (offsetMs != null) {
+    validateOffsetRange(offsetMs, prefix);
+    return new OffsetTimeProvider(offsetMs);
   }
 
   return new SystemTimeProvider();
+}
+
+function parseOffset(raw?: string) {
+  if (raw === undefined || raw === null) return undefined;
+  const asNumber = Number(raw);
+  if (Number.isNaN(asNumber)) return undefined;
+  return asNumber;
+}
+
+function validateOffsetRange(offsetMs: number, prefix: string) {
+  const MAX_OFFSET_MS = 30 * 60_000; // +/-30 minutos
+  if (Math.abs(offsetMs) > MAX_OFFSET_MS) {
+    throw new PlacetoPayValidationError(
+      `${prefix}TIME_OFFSET_MS/MINUTES es demasiado grande (max +/-30 minutos). Valor recibido: ${offsetMs}ms`
+    );
+  }
+}
+
+function isTruthy(value: string | undefined) {
+  if (!value) return false;
+  return ["1", "true", "yes", "on"].includes(value.toLowerCase());
 }

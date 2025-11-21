@@ -1,19 +1,32 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { buildAuth } from "../../src/core/auth";
 
+class FixedTimeProvider {
+  now(): Date {
+    return new Date("2025-01-02T03:04:05.000Z");
+  }
+}
+
 describe("buildAuth", () => {
-  it("genera auth con campos requeridos", () => {
-    const auth = buildAuth("login", "secret");
-    expect(auth.login).toBe("login");
-    expect(auth.seed).toBeTypeOf("string");
-    expect(auth.nonce).toBeTypeOf("string");
-    expect(auth.tranKey).toBeTypeOf("string");
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
-  it("genera nonce/tranKey distintos en cada call", () => {
-    const a1 = buildAuth("login", "secret");
-    const a2 = buildAuth("login", "secret");
-    expect(a1.nonce).not.toBe(a2.nonce);
-    expect(a1.tranKey).not.toBe(a2.tranKey);
+  it("genera tranKey determinista con seed y nonce conocidos", () => {
+    const nonce = Buffer.from("0123456789abcdef");
+
+    const auth = buildAuth(
+      "login",
+      "secret",
+      new FixedTimeProvider(),
+      () => nonce
+    );
+
+    expect(auth).toMatchObject({
+      login: "login",
+      seed: "2025-01-02T03:04:05.000Z",
+      nonce: nonce.toString("base64"),
+      tranKey: "i5IuHVWzU298tWmRWupLtliMtVsSXi4iE1W1VyO9B68="
+    });
   });
 });

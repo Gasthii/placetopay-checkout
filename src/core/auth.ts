@@ -29,15 +29,22 @@ export class OffsetTimeProvider implements TimeProvider {
   }
 }
 
+/**
+ * Genera el bloque auth requerido por PlacetoPay (login, tranKey, nonce, seed).
+ * - seed: ISO string generado con el timeProvider.
+ * - nonce: bytes aleatorios en base64 (puede inyectarse en tests via nonceGenerator).
+ * - tranKey: SHA-256(nonce + seed + secretKey) en base64.
+ */
 export function buildAuth(
   login: string,
   secretKey: string,
-  timeProvider: TimeProvider = new SystemTimeProvider()
+  timeProvider: TimeProvider = new SystemTimeProvider(),
+  nonceGenerator: () => Buffer = () => randomBytes(16)
 ): Auth {
   const seed = timeProvider.now().toISOString();
 
-  // Nonce en bytes crudos (16 bytes); se envía en base64 y se usa crudo en el hash
-  const nonceBytes = randomBytes(16);
+  // Nonce en bytes crudos (16 bytes); se envia en base64 y se usa crudo en el hash
+  const nonceBytes = nonceGenerator();
   const tranKey = createHash("sha256")
     .update(
       Buffer.concat([

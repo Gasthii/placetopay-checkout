@@ -2,6 +2,10 @@ import type { Logger } from "./logger";
 import type { RetryPolicy } from "./retry";
 import type { TimeProvider } from "./auth";
 
+/**
+ * Configuracion principal para inicializar PlacetoPayClient/HttpClient.
+ * Agrega JSDoc para mejorar autocompletado en editores.
+ */
 export interface PlacetoPayConfig {
   login: string;
   secretKey: string;
@@ -18,6 +22,14 @@ export interface PlacetoPayConfig {
   retryPolicy?: RetryPolicy;
   logger?: Logger;
   timeProvider?: TimeProvider;
+  /**
+   * Habilita logs de seed/nonce por debug (no expone secret). No usar en produccion.
+   */
+  debugAuth?: boolean;
+  /**
+   * Headers extra que se envian en cada request HTTP.
+   */
+  extraHeaders?: Record<string, string>;
 
   onRequest?(ctx: {
     url: string;

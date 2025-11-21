@@ -46,3 +46,10 @@ El objetivo es proveer una base sólida, extensible y lista para producción.
 npm install @gastondev/placetopay-checkout
 # o
 yarn add @gastondev/placetopay-checkout
+
+## Diagnostico rapido de autenticacion (401)
+- 100: falta UsernameToken (login/nonce/seed/tranKey).
+- 101: login no existe o no corresponde al host usado.
+- 102: tranKey no coincide con login/secretKey.
+- 103: seed fuera de rango (tolerancia +/-5 minutos).
+- Revisa que el host corresponda al ambiente de tus credenciales: `checkout-test.placetopay.com`, `checkout-test.placetopay.ec`, `checkout.test.getnet.cl`, `checkout.test.getnet.uy`.
