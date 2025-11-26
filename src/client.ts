@@ -35,6 +35,14 @@ export class PlacetoPayClient {
 
     const http = new HttpClient(config);
     const carrier = new RestCarrier(http);
+    const gatewayHttp =
+      config.gatewayBaseUrl && config.gatewayBaseUrl !== config.baseUrl
+        ? new HttpClient({ ...config, baseUrl: config.gatewayBaseUrl })
+        : http;
+    const gatewayCarrier =
+      config.gatewayBaseUrl && config.gatewayBaseUrl !== config.baseUrl
+        ? new RestCarrier(gatewayHttp)
+        : carrier;
     const timeProvider = config.timeProvider ?? new SystemTimeProvider();
 
     this.sessions = new SessionService(
@@ -67,7 +75,7 @@ export class PlacetoPayClient {
     this.webhooks = new WebhookVerifier(config.secretKey);
 
     this.gateway = new GatewayService(
-      carrier,
+      gatewayCarrier,
       config.login,
       config.secretKey,
       timeProvider,
@@ -85,13 +93,13 @@ export class PlacetoPayClient {
     );
 
     this.autopay = new AutopayService(
-      carrier,
+      gatewayCarrier,
       config.login,
       config.secretKey,
       timeProvider
     );
 
-    this.reports = new ReportService(carrier, config.login, config.secretKey, timeProvider);
+    this.reports = new ReportService(gatewayCarrier, config.login, config.secretKey, timeProvider);
   }
 
   /**
@@ -102,6 +110,7 @@ export class PlacetoPayClient {
     const login = process.env[`${prefix}LOGIN`];
     const secretKey = process.env[`${prefix}SECRET_KEY`];
     const baseUrl = process.env[`${prefix}BASE_URL`];
+    const gatewayBaseUrl = process.env[`${prefix}GATEWAY_BASE_URL`];
     const timeProvider = resolveTimeProviderFromEnv(prefix);
 
     if (!login || !secretKey || !baseUrl) {
@@ -114,6 +123,7 @@ export class PlacetoPayClient {
       login,
       secretKey,
       baseUrl,
+      gatewayBaseUrl,
       defaultLocale: process.env[`${prefix}DEFAULT_LOCALE`],
       returnUrlBase: process.env.PUBLIC_BASE_URL,
       cancelUrlBase: process.env.PUBLIC_BASE_URL,

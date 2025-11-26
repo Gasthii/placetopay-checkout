@@ -7,6 +7,8 @@ export * from "./core/retry";
 export * from "./core/httpClient";
 export * from "./core/url";
 export * from "./core/validation";
+export * from "./core/sessionOutcome";
+export * from "./invoice/asobancaria2001";
 
 export * from "./contracts/gateway";
 export * from "./contracts/carrier";

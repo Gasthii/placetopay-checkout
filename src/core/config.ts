@@ -7,9 +7,13 @@ import type { TimeProvider } from "./auth";
  * Agrega JSDoc para mejorar autocompletado en editores.
  */
 export interface PlacetoPayConfig {
-  login: string;
+ login: string;
   secretKey: string;
   baseUrl: string;
+  /**
+   * Base URL opcional para servicios gateway (/gateway/*). Si no se define, usa baseUrl.
+   */
+  gatewayBaseUrl?: string;
 
   // Defaults opcionales (mejoran DX y evitan hardcodeo repetido)
   defaultLocale?: string;

@@ -20,14 +20,16 @@ Licencia: MIT
   - Dispersions/modifiers/fields
   - Cancelar sesion
   - Acciones de transaccion
-  - Reembolso directo
-  - Webhook: validar firma
+- Reembolso directo
+- Webhook: validar firma
+- Helper de resultado de sesión (paid/partial)
 - Ejemplos Gateway
   - process/query/search/transaction
   - tokenize / invalidate / lookup / information
   - otp / 3ds / report / pinpad / account-validator / cashorder
 - Payment Links
 - Autopay
+- Facturacion (import-payment-orders)
 - Diagnostico autenticacion (401)
 - Opciones avanzadas (idempotencia, hooks, locales)
 - Buenas practicas
@@ -51,6 +53,9 @@ yarn add @gasthii/placetopay-checkout
 PLACETOPAY_LOGIN=TU_LOGIN
 PLACETOPAY_SECRET_KEY=TU_SECRET
 PLACETOPAY_BASE_URL=https://checkout-test.placetopay.com
+# Para Gateway (/gateway/*) usa el host documentado de tu ambiente (ej: https://api-co-dev.placetopay.ws)
+# Si no lo defines, se usará PLACETOPAY_BASE_URL
+# PLACETOPAY_GATEWAY_BASE_URL=https://api-co-dev.placetopay.ws
 PUBLIC_BASE_URL=http://localhost:3000   # usado para returnUrl/cancelUrl en ejemplos
 PLACETOPAY_DEFAULT_LOCALE=es_UY         # opcional
 PLACETOPAY_DEBUG_AUTH=true              # opcional: loguea seed/nonce
@@ -276,6 +281,18 @@ const isValid = verifier.verifySignature({
 });
 ```
 
+### Helper de resultado de sesión (paid/partial)
+```ts
+import { summarizeSessionOutcome } from "@gasthii/placetopay-checkout";
+
+const info = await client.sessions.get(requestId);
+const outcome = summarizeSessionOutcome(info);
+// outcome.paid, outcome.partiallyPaid, outcome.expiredPartial, paidTotal, pendingTotal, attempts[]
+if (outcome.paid) {
+  // marcar orden como pagada
+}
+```
+
 ---
 
 ## Ejemplos Gateway
@@ -376,6 +393,74 @@ await client.autopay.cancel(123);
 await client.autopay.search({ status: "ACTIVE" });
 await client.autopay.transactions(123);
 ```
+
+## Facturacion (import-payment-orders)
+Genera archivos de facturación/recaudo en formato Asobancaria 2001 según la doc (placetopay-docs/gateway/import-payment-orders.mdx).
+
+```ts
+import { buildBillingFile, buildCollectionFile } from "@gasthii/placetopay-checkout";
+
+// Archivo de facturación (cargue de facturas)
+const billingTxt = buildBillingFile({
+  header: {
+    nitEmpresaRecaudadora: "1234567890",
+    fechaArchivo: "20250101",
+    horaArchivo: "1530",
+    modificador: "A"
+  },
+  batches: [
+    {
+      header: {
+        codigoServicio: "1234567890123", // EAN13 o NIT
+        numeroLote: 1,
+        descripcionServicio: "SERVICIO"
+      },
+      details: [
+        {
+          referenciaPrincipal: "123456789012345678901234567890123456789012345678",
+          valorPrincipal: 1500.25,
+          fechaVencimiento: "20250131",
+          fechaCorte: "20250205",
+          incrementoDiario: 0.015, // <1 porcentual, >=1 fijo
+          incrementoTipo: 0
+        }
+      ]
+    }
+  ]
+});
+
+// Archivo de recaudo (salida)
+const collectionTxt = buildCollectionFile({
+  header: {
+    nitEmpresaFacturadora: "1234567890",
+    fechaRecaudo: "20250101",
+    codigoEntidadRecaudadora: "123",
+    numeroCuenta: "12345678901234567",
+    fechaArchivo: "20250101",
+    horaArchivo: "1530",
+    modificador: "A"
+  },
+  batches: [
+    {
+      header: { codigoServicio: "1234567890123", numeroLote: 1 },
+      details: [
+        {
+          referenciaPrincipal: "123456789012345678901234567890123456789012345678",
+          valorRecaudado: 1500.25,
+          procedenciaPago: "01",
+          medioPago: "11"
+        }
+      ]
+    }
+  ]
+});
+```
+
+Validaciones:
+- Líneas de longitud fija (220 para facturación, 162 para recaudo).
+- Fechas AAAAMMDD, horas HHMM.
+- Montos con 2 o 4 decimales según campo.
+- Campos “no usados” se rellenan con ceros/espacios como en la doc.
 
 ---
 
