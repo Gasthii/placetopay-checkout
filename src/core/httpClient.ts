@@ -98,8 +98,23 @@ export class HttpClient {
       }));
 
     if (!res.ok) {
-      const friendly = describeAuthError(res.status, json, this.baseUrl, path);
-      const message = friendly ?? `PlacetoPay respondio HTTP ${res.status}`;
+      const ids = extractIds(json);
+      this.logger?.error?.("[PlacetoPay] HTTP error", {
+        url,
+        status: res.status,
+        attempt,
+        body: json,
+        rawBody: rawText?.slice(0, 1000),
+        ...ids
+      });
+
+      const friendlyAuth = describeAuthError(res.status, json, this.baseUrl, path);
+      const friendlyHttp = describeHttpError(res.status, json, this.baseUrl, path);
+      const message =
+        friendlyAuth ??
+        friendlyHttp ??
+        `PlacetoPay respondio HTTP ${res.status}${statusMessage(json)}`;
+
       throw new PlacetoPayHttpError(message, res.status, json);
     }
 
@@ -196,4 +211,28 @@ function describeAuthError(
     default:
       return null;
   }
+}
+
+function statusMessage(body: any): string {
+  const msg = body?.status?.message ?? body?.message;
+  return msg ? `: ${msg}` : "";
+}
+
+function extractIds(body: any) {
+  const requestId = body?.requestId ?? body?.status?.requestId;
+  const reference = body?.reference ?? body?.request?.payment?.reference;
+  return { requestId, reference };
+}
+
+function describeHttpError(statusCode: number, body: any, baseUrl: string, path: string) {
+  if (statusCode === 404) {
+    return `PlacetoPay respondio HTTP 404 (Pagina no encontrada). Verifica baseUrl (${baseUrl}) y path ${path} segun host correcto (checkout vs gateway).${statusMessage(body)}`;
+  }
+  if (statusCode >= 500) {
+    return `PlacetoPay respondio HTTP ${statusCode} (server error).${statusMessage(body)}`;
+  }
+  if (statusCode === 400) {
+    return `PlacetoPay respondio HTTP 400 (solicitud invalida).${statusMessage(body)}`;
+  }
+  return null;
 }

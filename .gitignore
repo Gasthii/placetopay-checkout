@@ -1,4 +1,5 @@
 node_modules
+placetopay-checkout-php
 dist
 docs
 .env

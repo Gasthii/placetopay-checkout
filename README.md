@@ -34,6 +34,7 @@ Licencia: MIT
 - Opciones avanzadas (idempotencia, hooks, locales)
 - Buenas practicas
 - Scripts utiles
+- Depuracion y logging
 
 ---
 
@@ -172,6 +173,38 @@ await client.sessions.create({
   returnUrl: "https://tu-sitio.test/return"
 });
 ```
+**Caso mixto (ej. 30% efectivo + 70% tarjeta):**
+- Crea la sesión con `allowPartial: true` y total 100.
+- El usuario paga 30 con medio “efectivo”: la sesión queda `APPROVED_PARTIAL`, `paidTotal=30`, `pending=70`.
+- Luego paga los 70 restantes con tarjeta en la misma sesión (mientras no expire).
+- Al completar, la sesión pasa a `APPROVED`. Si expira antes, queda `PARTIAL_EXPIRED`.
+Usa `summarizeSessionOutcome(info)` para saber cuánto falta (`pendingTotal`) y qué intentos se aprobaron.
+
+#### Casos guiados para pagos mixtos (ejemplos prácticos)
+
+**Flujo sugerido desde backend/frontend:**
+1) Crea sesión con `allowPartial: true`.
+2) El usuario hace primer pago (ej. efectivo $30 de $100). Estado: `APPROVED_PARTIAL`.
+3) Tu backend consulta la sesión:
+```ts
+const info = await client.sessions.get(requestId);
+const outcome = summarizeSessionOutcome(info);
+if (outcome.partiallyPaid && outcome.pendingTotal > 0) {
+  // Muestra en tu UI: "Faltan $70. Continúa pagando con tarjeta."
+}
+```
+4) Redirige al mismo `processUrl` para que el usuario pague el saldo con otro medio (tarjeta).
+5) Cuando `pendingTotal` sea 0 y `status === "APPROVED"`, marca la orden como pagada.
+
+**Escenario efectivo + tarjeta con montos mínimos:**
+- Almacena en tu sistema un plan de pagos (ej. mínimo $30 en efectivo).
+- Permite que el primer intento sea efectivo. Si el monto aprobado es < $30, guía al usuario a pagar nuevamente efectivo hasta llegar a $30 (sigue siendo la misma sesión parcial).
+- Luego sugiere tarjeta para el saldo restante; reusa el mismo `processUrl` mientras no expire.
+
+**Recordatorios y seguridad:**
+- No hay split simultáneo en un solo paso; son intentos secuenciales.
+- Controla la expiración (`expiration` mínimo +5 min) y `attemptsLimit` si quieres limitar reintentos.
+- Las sesiones parciales no permiten impuestos ni dispersión.
 
 ### Preautorizacion (checkin -> reauthorization -> checkout)
 ```ts
@@ -461,6 +494,36 @@ Validaciones:
 - Fechas AAAAMMDD, horas HHMM.
 - Montos con 2 o 4 decimales según campo.
 - Campos “no usados” se rellenan con ceros/espacios como en la doc.
+
+---
+
+## Depuracion y logging
+Activa `logger`, `debugAuth` y hooks para ver requests/responses y errores enriquecidos:
+
+```ts
+const logger = {
+  debug: (...a) => console.debug(...a),
+  info: (...a) => console.info(...a),
+  error: (...a) => console.error(...a)
+};
+
+const client = new PlacetoPayClient({
+  login: process.env.PLACETOPAY_LOGIN!,
+  secretKey: process.env.PLACETOPAY_SECRET_KEY!,
+  baseUrl: process.env.PLACETOPAY_BASE_URL!, // checkout host
+  gatewayBaseUrl: process.env.PLACETOPAY_GATEWAY_BASE_URL, // opcional para /gateway/*
+  logger,
+  debugAuth: true, // logs de seed/nonce
+  onRequest: ({ url, body, headers, attempt }) =>
+    console.log("[P2P][req]", attempt, url, { auth: (body as any)?.auth, headers }),
+  onResponse: ({ url, status, body, rawBody, attempt }) =>
+    console.log("[P2P][res]", attempt, url, status, body, rawBody?.slice(0, 200))
+});
+```
+
+- Errores HTTP loguean `url`, `status`, `attempt`, `body/rawBody` y, si vienen, `requestId`/`reference`.
+- `PLACETOPAY_DEBUG_AUTH=true` (en env) habilita logs de auth (seed/nonce).
+- Usa `PLACETOPAY_GATEWAY_BASE_URL` si tu host de gateway es distinto al de checkout.
 
 ---
 
