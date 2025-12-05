@@ -206,6 +206,39 @@ if (outcome.partiallyPaid && outcome.pendingTotal > 0) {
 - Controla la expiración (`expiration` mínimo +5 min) y `attemptsLimit` si quieres limitar reintentos.
 - Las sesiones parciales no permiten impuestos ni dispersión.
 
+### Impuestos (taxes) y modificadores
+```ts
+await client.sessions.create({
+  payment: {
+    reference: "331122",
+    description: "Factura con impuestos y modificador",
+    amount: {
+      currency: "USD",
+      total: 500,
+      taxes: [
+        { kind: "stateTax", amount: 16.13 },
+        { kind: "municipalTax", amount: 11.21 },
+        { kind: "reducedStateTax", amount: 10.21 }
+      ]
+    },
+    modifiers: [
+      {
+        type: "FEDERAL_GOVERNMENT",
+        code: 17934,
+        additional: { invoice: "112233" }
+      }
+    ]
+  },
+  ipAddress: "127.0.0.1",
+  userAgent: "SDK Demo",
+  returnUrl: "https://tu-sitio.test/return",
+  expiration: new Date(Date.now() + 10 * 60_000).toISOString()
+});
+```
+Notas:
+- No combinar `allowPartial` con impuestos (la API no lo admite en parciales).
+- `modifiers` soporta `FEDERAL_GOVERNMENT` con códigos documentados (17934, 18083, 19210, 18910, 18999) y `additional.invoice` requerido.
+
 ### Preautorizacion (checkin -> reauthorization -> checkout)
 ```ts
 // Paso 1: checkin
@@ -312,6 +345,8 @@ const isValid = verifier.verifySignature({
   status: { status: "APPROVED", date: "2025-01-01T12:00:00-05:00", reason: "00", message: "OK" },
   signature: "sha256:..."
 });
+
+// Si la firma llega sin prefijo se usa SHA-1 (compatibilidad). Con prefijo "sha256:" se usa SHA-256.
 ```
 
 ### Helper de resultado de sesión (paid/partial)
