@@ -24,6 +24,8 @@ export class WebhookVerifier {
     const isSha256 = received.startsWith("sha256:");
     const plain = isSha256 ? received.slice("sha256:".length) : received;
 
+    if (!notification.status?.status || !notification.status?.date) return false;
+
     const payload =
       String(notification.requestId) +
       notification.status.status +
@@ -37,6 +39,42 @@ export class WebhookVerifier {
 
     if (generated.length !== plain.length) return false;
     return timingSafeCompare(generated, plain);
+  }
+
+  /**
+   * Verifica la firma pero retorna el motivo de fallo para mejor depuración.
+   */
+  verifyWithReason(
+    notification: CheckoutNotification,
+    secretKeyOverride?: string
+  ): { valid: boolean; reason?: string } {
+    const secret = secretKeyOverride ?? this.secretKey;
+    if (!notification.signature) {
+      return { valid: false, reason: "missing-signature" };
+    }
+    if (!notification.status?.status || !notification.status?.date) {
+      return { valid: false, reason: "missing-status-or-date" };
+    }
+    const received = notification.signature;
+    const isSha256 = received.startsWith("sha256:");
+    const plain = isSha256 ? received.slice("sha256:".length) : received;
+
+    const payload =
+      String(notification.requestId) +
+      notification.status.status +
+      notification.status.date +
+      secret;
+
+    const algo = isSha256 ? "sha256" : "sha1";
+    const generated = createHash(algo)
+      .update(payload, "utf8")
+      .digest("hex");
+
+    if (generated.length !== plain.length) {
+      return { valid: false, reason: "length-mismatch" };
+    }
+    const match = timingSafeCompare(generated, plain);
+    return match ? { valid: true } : { valid: false, reason: "signature-mismatch" };
   }
 }
 

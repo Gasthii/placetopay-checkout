@@ -339,7 +339,7 @@ await client.refunds.refund({
 import WebhookVerifier from "@gasthii/placetopay-checkout/dist/services/webhookVerifier"; // o client.webhooks
 
 const verifier = new WebhookVerifier(process.env.PLACETOPAY_SECRET_KEY!);
-const isValid = verifier.verifySignature({
+const isValid = verifier.verify({
   requestId: 1234,
   reference: "TEST_1234",
   status: { status: "APPROVED", date: "2025-01-01T12:00:00-05:00", reason: "00", message: "OK" },
@@ -347,6 +347,18 @@ const isValid = verifier.verifySignature({
 });
 
 // Si la firma llega sin prefijo se usa SHA-1 (compatibilidad). Con prefijo "sha256:" se usa SHA-256.
+
+// Para depurar el motivo de fallo:
+const { valid, reason } = verifier.verifyWithReason(payload);
+if (!valid) {
+  console.error("Firma inválida, motivo:", reason);
+}
+
+// Buenas prácticas de webhook:
+// - Responder 2xx lo más rápido posible.
+// - Validar la firma antes de confiar en requestId/reference.
+// - Manejar idempotencia (guardar requestId/reference ya procesados).
+// - El endpoint debe aceptar solo POST y con HTTPS.
 ```
 
 ### Helper de resultado de sesión (paid/partial)
