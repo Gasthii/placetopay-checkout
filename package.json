@@ -1,6 +1,6 @@
 {
   "name": "@gasthii/placetopay-checkout",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "description": "SDK no oficial, robusto y tipado para integrar PlacetoPay Checkout (WebCheckout/Redirection) en Node.js/Next.js server-side.",
   "author": "Gastón Dev (https://gastondev.xyz)",
   "license": "MIT",
