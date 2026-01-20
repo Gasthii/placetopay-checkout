@@ -1,20 +1,21 @@
-export interface Person {
-  document?: string;
-  documentType?: string;
-  name?: string;
-  surname?: string;
-  company?: string;
-  email?: string;
-  mobile?: string;
+export interface Address {
+  street: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+  phone?: string;
+}
 
-  address?: {
-    street?: string;
-    city?: string;
-    state?: string;
-    country?: string;
-    postalCode?: string;
-    phone?: string;
-  };
+export interface Person {
+  document: string;
+  documentType: string;
+  name: string;
+  surname: string;
+  email: string;
+  mobile?: string;
+  company?: string;
+  address?: Address;
 
   [key: string]: unknown;
 }

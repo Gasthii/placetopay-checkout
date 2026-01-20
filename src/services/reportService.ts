@@ -2,7 +2,7 @@
 import { buildAuth, type TimeProvider } from "../core/auth";
 import type { GatewayReportRequest } from "../domain/gateway";
 import { PlacetoPayError, PlacetoPayValidationError } from "../errors/errors";
-import type { GatewayReportResponse } from "../domain/gatewayExtra";
+import type { GatewayReportResponse } from "../domain/gateway";
 
 /**
  * Maneja generacion y obtencion de reportes (/gateway/report y /gateway/report/obtain).
@@ -13,7 +13,7 @@ export class ReportService {
     private readonly login: string,
     private readonly secretKey: string,
     private readonly timeProvider: TimeProvider
-  ) {}
+  ) { }
 
   private auth() {
     return buildAuth(this.login, this.secretKey, this.timeProvider);

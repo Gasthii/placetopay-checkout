@@ -15,15 +15,15 @@ async function main() {
   // Hooks de depuracion: logueamos auth y status de la respuesta (solo debugging)
   const httpDebug = (client as any)?.sessions?.carrier?.http as
     | {
-        onRequest?: (ctx: { url: string; body: unknown; attempt?: number }) => unknown;
-        onResponse?: (ctx: {
-          url: string;
-          status: number;
-          body: unknown;
-          rawBody?: string;
-          attempt?: number;
-        }) => unknown;
-      }
+      onRequest?: (ctx: { url: string; body: unknown; attempt?: number }) => unknown;
+      onResponse?: (ctx: {
+        url: string;
+        status: number;
+        body: unknown;
+        rawBody?: string;
+        attempt?: number;
+      }) => unknown;
+    }
     | undefined;
 
   if (httpDebug) {
@@ -39,43 +39,44 @@ async function main() {
 
   const session = await client.sessions.create({
     locale: "es_UY",
+    // auth: {{auth}} // SDK handles auth automatically
+    payer: {
+      name: "Mack Barrows",
+      surname: "Contreras",
+      email: "testp2psky@gmail.com",
+      mobile: "+59890000000",
+      documentType: "UYCI",
+      document: "4639596-0"
+    },
     payment: {
-      reference,
-      description: "Pago de prueba en UYU",
+      reference: "API_SALEPLAN18083-13",
+      description: "Pago básico de prueba",
       amount: {
         currency: "UYU",
-        total: 1000,
-        taxes: [{ kind: "valueAddedTax", amount: 220, base: 0 }]
+        total: 100,
+        taxes: [
+          {
+            kind: "valueAddedTax",
+            amount: 5,
+            base: 90
+          }
+        ],
+        details: [
+          {
+            kind: "subtotal",
+            amount: 90
+          }
+        ]
       },
-      items: [
+      modifiers: [
         {
-          sku: "SKU-URU-001",
-          name: "Producto prueba Uruguay",
-          category: "physical",
-          qty: 1,
-          price: 1000,
-          tax: 220
+          type: "FEDERAL_GOVERNMENT",
+          code: 18083,
+          additional: {
+            invoice: "05678"
+          }
         }
-      ],
-      fields: [
-        { keyword: "campana", value: "uat_demo", displayOn: "none" }
       ]
-    },
-    buyer: {
-      document: "4598765-4",
-      documentType: "UYCI",
-      name: "Juan",
-      surname: "Perez",
-      email: "juan.perez@example.com",
-      mobile: "+59898765432",
-      address: {
-        country: "UY",
-        state: "MO",
-        city: "Montevideo",
-        street: "Av. Italia 1234",
-        postalCode: "11300",
-        phone: "+59898765432"
-      }
     },
     expiration,
     ipAddress: "127.0.0.1",

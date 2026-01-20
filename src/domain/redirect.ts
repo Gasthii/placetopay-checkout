@@ -19,23 +19,24 @@ export interface SessionMetadata {
   cancelPath?: string;
   cancelParams?: Record<string, unknown>;
   initiatorIndicator?:
-    | "AGENT"
-    | "CARDHOLDER_COF"
-    | "CARDHOLDER_RECURRING_VARIABLE_AMOUNT"
-    | "CARDHOLDER_RECURRING_FIXED_AMOUNT"
-    | "CARDHOLDER_WITH_INSTALLMENTS"
-    | "MERCHANT_COF"
-    | "MERCHANT_RECURRING_VARIABLE_AMOUNT"
-    | "MERCHANT_RECURRING_FIXED_AMOUNT"
-    | "MERCHANT_WITH_INSTALLMENTS"
-    | string;
+  | "AGENT"
+  | "CARDHOLDER_COF"
+  | "CARDHOLDER_RECURRING_VARIABLE_AMOUNT"
+  | "CARDHOLDER_RECURRING_FIXED_AMOUNT"
+  | "CARDHOLDER_WITH_INSTALLMENTS"
+  | "MERCHANT_COF"
+  | "MERCHANT_RECURRING_VARIABLE_AMOUNT"
+  | "MERCHANT_RECURRING_FIXED_AMOUNT"
+  | "MERCHANT_WITH_INSTALLMENTS"
+  | "MERCHANT_WITH_INSTALLMENTS" // Duplicated in original, kept for safety or can remove unique
+  | string;
   EBTDeliveryIndicator?:
-    | "DIRECT_DELIVERY"
-    | "CUSTOMER_PICKUP"
-    | "COMMERCIAL_SHIPPING"
-    | "OTHER"
-    | "NOT_AVAILABLE"
-    | string;
+  | "DIRECT_DELIVERY"
+  | "CUSTOMER_PICKUP"
+  | "COMMERCIAL_SHIPPING"
+  | "OTHER"
+  | "NOT_AVAILABLE"
+  | string;
   openingDate?: string;
   beneficiaryId?: string;
   [key: string]: unknown;
@@ -45,7 +46,7 @@ export interface RedirectRequest {
   locale?: string;
 
   payment?: Payment;
-  payments?: Payment[];
+  payments?: Payment[]; // For split payments
 
   subscription?: SubscriptionRequest;
 
@@ -80,11 +81,17 @@ export interface RedirectResponse {
   [key: string]: unknown;
 }
 
+/**
+ * Respuesta de Consultar Sesión (Get Session).
+ */
 export interface RedirectInformation {
   requestId: number;
   status: Status;
   request?: RedirectRequest;
-  payment?: Transaction | Transaction[];
+  /**
+   * Array de intentos de pago. Puede ser null o vacío si no hubo intentos.
+   */
+  payment?: Transaction[] | null;
   subscription?: unknown;
   [key: string]: unknown;
 }

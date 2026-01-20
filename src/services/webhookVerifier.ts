@@ -1,8 +1,12 @@
-import { createHash } from "crypto";
+import { createHash, createHmac, timingSafeEqual } from "crypto";
 import type { CheckoutNotification } from "../domain/notification";
 
 export class WebhookVerifier {
-  constructor(private readonly secretKey: string) {}
+  constructor(private readonly secretKey: string) { }
+
+
+
+
 
   /**
    * Verifica la firma de notificaciones de checkout según placetopay-docs.
@@ -76,6 +80,30 @@ export class WebhookVerifier {
     const match = timingSafeCompare(generated, plain);
     return match ? { valid: true } : { valid: false, reason: "signature-mismatch" };
   }
+  /**
+   * Verifica la firma HMAC-SHA256 para Webhooks (ej. Devoluciones ACH).
+   * Headers esperados: X-Signature
+   *
+   * @param {string} bodyString El cuerpo crudo (raw body) de la solicitud POST.
+   * @param {string} signatureHeader El valor del header X-Signature.
+   * @param {string} [secretKeyOverride] Opcional.
+   * @returns {boolean}
+   */
+  verifyHmac(
+    bodyString: string,
+    signatureHeader: string,
+    secretKeyOverride?: string
+  ): boolean {
+    const secret = secretKeyOverride ?? this.secretKey;
+    if (!signatureHeader || !bodyString) return false;
+
+    // La firma generada es el HMAC SHA-256 del body usando el tranKey (secret)
+    const generated = createHmac("sha256", secret)
+      .update(bodyString)
+      .digest("hex");
+
+    return timingSafeCompare(generated, signatureHeader);
+  }
 }
 
 export default WebhookVerifier;
@@ -84,7 +112,5 @@ function timingSafeCompare(generatedHex: string, receivedHex: string) {
   const a = Buffer.from(generatedHex, "hex");
   const b = Buffer.from(receivedHex, "hex");
   if (a.length !== b.length) return false;
-  // @ts-ignore: timingSafeEqual existe en crypto v12+
-  const { timingSafeEqual } = require("crypto");
   return timingSafeEqual(a, b);
 }

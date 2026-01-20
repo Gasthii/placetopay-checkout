@@ -37,17 +37,4 @@ export interface InstrumentInvalidateRequest {
   locale?: string;
 }
 
-export interface GatewayInformationRequest {
-  locale?: string;
-  payment: Payment;
-  instrument: Instrument;
-  ipAddress: string;
-  userAgent: string;
-  provider?: string;
-  metadata?: Record<string, unknown>;
-}
 
-export interface GatewayTokenRequest {
-  locale?: string;
-  instrument: Instrument;
-}

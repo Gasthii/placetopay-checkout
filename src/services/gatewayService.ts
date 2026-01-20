@@ -7,8 +7,6 @@ import { assertMetadataFormat } from "../core/metadata";
 import type {
   CollectRequest,
   CollectResponse,
-  GatewayInformationRequest,
-  GatewayTokenRequest,
   InstrumentInvalidateRequest
 } from "../domain/instrument";
 import type {
@@ -26,20 +24,20 @@ import type {
   GatewayTransactionRequest,
   GatewayTransactionResponse,
   Gateway3dsRequest,
-  GatewayStatus
-} from "../domain/gateway";
-import type {
+  GatewayStatus,
+  GatewayInformationRequest,
+  GatewayTokenRequest,
+  GatewayInformationResponse,
+  GatewayTokenizeResponse,
+  GatewayTokenLookupResponse,
+  GatewayOtpResponse,
+  GatewayThreeDSResponse,
+  GatewayReportResponse,
+  GatewaySearchResponse,
   GatewayAccountValidatorResponse,
   GatewayCashOrderResponse,
-  GatewayInformationResponse,
-  GatewayOtpResponse,
-  GatewayPinpadResponse,
-  GatewayReportResponse,
-  GatewayThreeDSResponse,
-  GatewayTokenLookupResponse,
-  GatewayTokenizeResponse,
-  GatewaySearchResponse
-} from "../domain/gatewayExtra";
+  GatewayPinpadResponse
+} from "../domain/gateway";
 import { PlacetoPayError, PlacetoPayValidationError } from "../errors/errors";
 
 /**
@@ -48,25 +46,6 @@ import { PlacetoPayError, PlacetoPayValidationError } from "../errors/errors";
  * Las respuestas de gateway usan estados estrictos:
  * - status.status: "OK" | "FAILED" | "APPROVED" | "PENDING" | "REJECTED" (según el endpoint)
  * - reason/message: provienen del gateway y se modelan sin ampliar más allá de la doc.
- *
- * @typedef {import("../domain/gateway").GatewayProcessRequest} GatewayProcessRequest
- * @typedef {import("../domain/gateway").GatewayProcessResponse} GatewayProcessResponse
- * @typedef {import("../domain/gateway").GatewayTransactionResponse} GatewayTransactionResponse
- * @typedef {import("../domain/gateway").GatewayQueryResponse} GatewayQueryResponse
- * @typedef {import("../domain/gateway").GatewayTransactionRequest} GatewayTransactionRequest
- * @typedef {import("../domain/gateway").GatewayTokenizeRequest} GatewayTokenizeRequest
- * @typedef {import("../domain/gateway").GatewaySearchRequest} GatewaySearchRequest
- * @typedef {import("../domain/gatewayExtra").GatewayTokenizeResponse} GatewayTokenizeResponse
- * @typedef {import("../domain/gatewayExtra").GatewayOtpResponse} GatewayOtpResponse
- * @typedef {import("../domain/gatewayExtra").GatewayThreeDSResponse} GatewayThreeDSResponse
- * @typedef {import("../domain/gatewayExtra").GatewayInformationResponse} GatewayInformationResponse
- * @typedef {import("../domain/gatewayExtra").GatewayTokenLookupResponse} GatewayTokenLookupResponse
- * @typedef {import("../domain/gatewayExtra").GatewayReportResponse} GatewayReportResponse
- * @typedef {import("../domain/gatewayExtra").GatewaySearchResponse} GatewaySearchResponse
- * @typedef {import("../domain/gatewayExtra").GatewayAccountValidatorResponse} GatewayAccountValidatorResponse
- * @typedef {import("../domain/gatewayExtra").GatewayCashOrderResponse} GatewayCashOrderResponse
- * @typedef {import("../domain/gatewayExtra").GatewayPinpadResponse} GatewayPinpadResponse
- * @typedef {import("../domain/gatewayExtra").GatewayThreeDSResponse} GatewayThreeDSResponse
  */
 export class GatewayService {
   private readonly defaultLocale?: string;
@@ -152,13 +131,6 @@ export class GatewayService {
       throw new PlacetoPayValidationError("instrument is required");
     }
 
-    /**
-     * Invalida un token/subtoken existente.
-     *
-     * @typedef {{ status: GatewayStatus }} InvalidateInstrumentResponse
-     * @param {InstrumentInvalidateRequest} request Requiere instrument.token o instrument.subtoken según doc.
-     * @returns {Promise<InvalidateInstrumentResponse>}
-     */
     const locale = this.resolveLocale(request.locale);
     const body = {
       locale,
@@ -454,6 +426,7 @@ export class GatewayService {
     }
     return response;
   }
+
 }
 
 export default GatewayService;

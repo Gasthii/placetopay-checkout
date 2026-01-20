@@ -18,6 +18,7 @@ Licencia: MIT
   - Preautorizacion (checkin -> reauthorization -> checkout)
   - Suscripcion/token y cobro con token (collect)
   - Dispersions/modifiers/fields
+  - Consultar sesion (Get Session)
   - Cancelar sesion
   - Acciones de transaccion
 - Reembolso directo
@@ -108,44 +109,43 @@ async function crearSesion() {
 
   const res = await client.sessions.create({
     locale: "es_UY",
-    attemptsLimit: 3,
-    paymentMethods: ["visa", "master"],
+    payer: {
+      name: "Mack Barrows",
+      surname: "Contreras",
+      email: "testp2psky@gmail.com",
+      mobile: "+59890000000",
+      documentType: "UYCI",
+      document: "4639596-0"
+    },
     payment: {
       reference,
-      description: "Compra Multimotos",
+      description: "Pago básico de prueba",
       amount: {
         currency: "UYU",
-        total: 1250,
-        taxes: [{ kind: "valueAddedTax", amount: 265, base: 0 }]
+        total: 100,
+        taxes: [
+          {
+            kind: "valueAddedTax",
+            amount: 5,
+            base: 90
+          }
+        ],
+        details: [
+          {
+            kind: "subtotal",
+            amount: 90
+          }
+        ]
       },
-      items: [
+      modifiers: [
         {
-          sku: "MOTO-CASCO-001",
-          name: "Casco integral",
-          category: "physical",
-          qty: 1,
-          price: 1250,
-          tax: 265
+          type: "FEDERAL_GOVERNMENT",
+          code: 18083,
+          additional: {
+            invoice: "05678"
+          }
         }
-      ],
-      fields: [{ keyword: "sucursal", value: "Melo", displayOn: "payment" }]
-    },
-    buyer: {
-      document: "4598765-4",
-      documentType: "UYCI",
-      name: "Gaston",
-      surname: "Perez",
-      email: "gaston@example.com",
-      mobile: "+59898765432",
-      company: "Multimotos",
-      address: {
-        country: "UY",
-        state: "MO",
-        city: "Melo",
-        street: "Av. Italia 1234",
-        postalCode: "37000",
-        phone: "+59898765432"
-      }
+      ]
     },
     ipAddress: "127.0.0.1",
     userAgent: "Node Demo",
@@ -314,9 +314,29 @@ payment: {
 }
 ```
 
-### Cancelar sesion
+### Consultar sesion (Get Session)
 ```ts
-await client.sessions.cancel(requestId);
+const session = await client.sessions.get(requestId);
+// session.status: Estado global (APPROVED, PENDING, REJECTED, etc.)
+// session.payment: Array de intentos (puede ser null o vacio)
+
+if (session.status.status === "APPROVED") {
+  console.log("Sesion pagada. RequestId:", session.requestId);
+  // Buscar el intento aprobado
+  const approvedTx = session.payment?.find(p => p.status.status === "APPROVED");
+  console.log("Autorizacion:", approvedTx?.authorization);
+} else {
+  console.log("Estado actual:", session.status.message);
+}
+```
+
+### Cancelar sesion
+Permite invalidar la sesión para que el usuario no pueda seguir intentando pagar.
+```ts
+const result = await client.sessions.cancel(requestId);
+if (result.status.status === "OK") {
+   console.log("Sesion cancelada exitosamente"); // session.status pasará a REJECTED/MC
+}
 ```
 
 ### Acciones de transaccion
@@ -334,32 +354,37 @@ await client.refunds.refund({
 });
 ```
 
-### Webhook: validar firma
+### Webhooks: Validar firma / Notificaciones
+
+El SDK soporta dos tipos de notificaciones:
+1.  **Notificación de Transacción (Standard)**: Usada en el flujo normal de Checkout.
+2.  **Webhooks (Events)**: Usado para novedades asíncronas como **Devoluciones ACH**.
+
 ```ts
 import WebhookVerifier from "@gasthii/placetopay-checkout/dist/services/webhookVerifier"; // o client.webhooks
 
 const verifier = new WebhookVerifier(process.env.PLACETOPAY_SECRET_KEY!);
-const isValid = verifier.verify({
-  requestId: 1234,
-  reference: "TEST_1234",
-  status: { status: "APPROVED", date: "2025-01-01T12:00:00-05:00", reason: "00", message: "OK" },
-  signature: "sha256:..."
-});
 
-// Si la firma llega sin prefijo se usa SHA-1 (compatibilidad). Con prefijo "sha256:" se usa SHA-256.
+// CASO 1: Notificación estándar (Checkout)
+// Payload llega con requestId, status, reference y signature (SHA1/SHA256 concatenado)
+const isValidCheckout = verifier.verify(notificationBody);
 
-// Para depurar el motivo de fallo:
-const { valid, reason } = verifier.verifyWithReason(payload);
-if (!valid) {
-  console.error("Firma inválida, motivo:", reason);
+// CASO 2: Webhook (ej. Devolución ACH)
+// Payload llega con headers. Las devuelve ACH usan X-Signature (HMAC-SHA256 del body)
+const rawBody = JSON.stringify(req.body); // Asegúrate de obtener el raw string exacto
+const signatureHeader = req.headers['x-signature'];
+
+if (verifier.verifyHmac(rawBody, signatureHeader)) {
+    console.log("Webhook auténtico. Tipo:", req.body.type); // ej: chargeback.created
+} else {
+    console.error("Firma HMAC inválida");
 }
-
-// Buenas prácticas de webhook:
-// - Responder 2xx lo más rápido posible.
-// - Validar la firma antes de confiar en requestId/reference.
-// - Manejar idempotencia (guardar requestId/reference ya procesados).
-// - El endpoint debe aceptar solo POST y con HTTPS.
 ```
+Buenas prácticas:
+- Responder `200 OK` lo más rápido posible.
+- Validar siempre la firma antes de procesar.
+- Usar `verify()` para notificaciones de sesión y `verifyHmac()` para eventos de servidor (ACH).
+
 
 ### Helper de resultado de sesión (paid/partial)
 ```ts
@@ -394,14 +419,28 @@ await client.gateway.transaction({ action: "reverse", internalReference: 12345, 
 
 ### tokenize / information / lookup / invalidate
 ```ts
-await client.gateway.tokenize({ instrument: { card: { number: "4110760000000081", expiration: "12/30", cvv: "123" } }, payer: { name: "Gaston" } });
-await client.gateway.instrumentInformation({
-  payment: { reference: "INFO_1", amount: { currency: "USD", total: 10 } },
-  instrument: { card: { number: "4111111111111111" } },
+// Tokenizar tarjeta
+const tokenRes = await client.gateway.tokenize({ 
+    instrument: { 
+        card: { number: "4110760000000081", expiration: "12/30", cvv: "123" } 
+    }, 
+    payer: { name: "Gaston" } 
+});
+
+// Consultar informacion de tarjeta (BIN, cuotas, etc.)
+const info = await client.gateway.instrumentInformation({
+  payment: { reference: "INFO_1", description: "Consulta", amount: { currency: "USD", total: 10 } },
+  instrument: { card: { number: "4111111111111111" } }, // Solo BIN o token
   ipAddress: "127.0.0.1",
   userAgent: "Info Demo"
 });
+console.log("Proveedor:", info.provider); // EJ: CREDIBANCO, VISANET
+console.log("Cuotas:", info.credits?.[0]?.installments); 
+
+// Consultar token
 await client.gateway.lookupToken({ instrument: { token: { token: "TOKEN", subtoken: "SUB" } } });
+
+// Invalidar token
 await client.gateway.invalidateInstrument({ instrument: { token: { token: "TOKEN" } } });
 ```
 

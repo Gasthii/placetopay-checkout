@@ -1,14 +1,17 @@
 export interface Status {
-  status: string;
+  status:
+  | "OK"
+  | "FAILED"
+  | "APPROVED"
+  | "APPROVED_PARTIAL"
+  | "REJECTED"
+  | "PENDING"
+  | "PENDING_VALIDATION"
+  | "REFUNDED"
+  | string;
   reason: string;
   message: string;
   date: string;
 }
 
-export type SessionStatusCode =
-  | "PENDING"
-  | "APPROVED"
-  | "REJECTED"
-  | "APPROVED_PARTIAL"
-  | "PARTIAL_EXPIRED"
-  | string;
+export type SessionStatusCode = Status["status"];
